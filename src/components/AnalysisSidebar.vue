@@ -1,0 +1,626 @@
+<template>
+  <div class="sidebar">
+    <v-btn @click="loadEngine" :color="isEngineLoaded ? 'success' : 'primary'" class="full-btn">
+      {{ isEngineLoaded ? '引擎已加载' : '加载引擎' }}
+    </v-btn>
+    <v-btn @click="manualStartAnalysis" :disabled="!isEngineLoaded || isThinking" color="primary" class="full-btn">
+      {{ isThinking ? '思考中...' : '开始分析' }}
+    </v-btn>
+    <v-btn @click="stopAnalysis" :disabled="!isEngineLoaded || !isThinking" color="warning" class="full-btn">
+      停止分析
+    </v-btn>
+    <v-btn @click="playBestMove" :disabled="!bestMove" color="secondary" class="full-btn">
+      走最佳着
+    </v-btn>
+    
+    <div class="autoplay-settings">
+      <v-btn @click="toggleRedAi" :color="isRedAi ? 'error' : 'primary'" class="half-btn">
+        {{ isRedAi ? '红方电脑(开)' : '红方电脑(关)' }}
+      </v-btn>
+      <v-btn @click="toggleBlackAi" :color="isBlackAi ? 'error' : 'primary'" class="half-btn">
+        {{ isBlackAi ? '黑方电脑(开)' : '黑方电脑(关)' }}
+      </v-btn>
+    </div>
+
+    <v-switch
+      v-model="flipMode"
+      label="自由翻子模式"
+      color="indigo"
+      true-value="free"
+      false-value="random"
+      hide-details
+      class="custom-switch"
+    />
+
+    <div class="section">
+      <h3 class="section-title">
+        暗子池
+        <v-chip size="x-small" :color="validationStatus === '正常' ? 'green' : 'red'" variant="flat">
+          {{ validationStatus }}
+        </v-chip>
+      </h3>
+      <div class="pool-manager">
+        <div v-for="item in unrevealedPiecesForDisplay" :key="item.char" class="pool-item">
+          <img :src="getPieceImageUrl(item.name)" :alt="item.name" class="pool-piece-img" />
+          <v-btn density="compact" icon="mdi-minus" size="x-small" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0" />
+          <span class="pool-count">{{ item.count }}</span>
+          <v-btn density="compact" icon="mdi-plus" size="x-small" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max" />
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>引擎分析</h3>
+      <div class="analysis-output"><p>{{ analysis }}</p></div>
+    </div>
+
+    <div class="section">
+      <h3>棋谱</h3>
+      <div class="move-list" ref="moveListElement">
+        <div
+          class="move-item"
+          :class="{ 'current-move': currentMoveIndex === 0 }"
+          @click="handleMoveClick(0)"
+        >
+          <span class="move-number">开局</span>
+        </div>
+        <div
+          v-for="(entry, idx) in history"
+          :key="idx"
+          class="move-item"
+          :class="{ 'current-move': currentMoveIndex === idx + 1 }"
+          @click="handleMoveClick(idx + 1)"
+        >
+          <template v-if="entry.type === 'move'">
+            <span class="move-number">{{ getMoveNumber(idx) }}</span>
+            <span class="move-uci">{{ entry.data }}</span>
+          </template>
+          <template v-else-if="entry.type === 'adjust'">
+            <span class="move-adjust">调整: {{ entry.data }}</span>
+          </template>
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="section">
+      <h3>引擎日志</h3>
+      <div class="engine-log" ref="engineLogElement">
+        <div
+          v-for="(ln, Idx) in engineOutput"
+          :key="Idx"
+          :class="ln.kind === 'sent' ? 'line-sent' : 'line-recv'"
+        >
+          {{ ln.text }}
+        </div>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <v-btn 
+        @click="openAboutDialog" 
+        color="info" 
+        variant="outlined" 
+        class="full-btn"
+        prepend-icon="mdi-information"
+      >
+        关于
+      </v-btn>
+    </div>
+
+    <AboutDialog ref="aboutDialogRef" />
+
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, inject, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+// import type { EngineLine } from '@/composables/useUciEngine';
+import type { HistoryEntry } from '@/composables/useChessGame';
+import AboutDialog from './AboutDialog.vue';
+
+
+/* ---------- Debug ---------- */
+function dbg(tag: string, ...msg: any[]) {
+  console.log('[SDB]', tag, ...msg);
+}
+
+/* ---------- Injected State ---------- */
+const gameState = inject('game-state') as any;
+const {
+  history,
+  currentMoveIndex,
+  replayToMove,
+  playMoveFromUci,
+  flipMode,
+  unrevealedPieceCounts,
+  validationStatus,
+  adjustUnrevealedCount,
+  getPieceNameFromChar,
+  sideToMove,
+  pendingFlip,
+} = gameState;
+
+const engineState = inject('engine-state') as any;
+const {
+  engineOutput,
+  isEngineLoaded,
+  analysis,
+  bestMove,
+  isThinking,
+  loadEngine,
+  startAnalysis,
+  stopAnalysis,
+} = engineState;
+
+/* ---------- Auto Play ---------- */
+const isRedAi = ref(false);
+const isBlackAi = ref(false);
+const moveListElement = ref<HTMLElement | null>(null);
+const engineLogElement = ref<HTMLElement | null>(null);
+const aboutDialogRef = ref<InstanceType<typeof AboutDialog> | null>(null);
+
+
+
+
+// Analysis settings
+const analysisSettings = ref({
+  movetime: 1000,
+  maxDepth: 20,
+  maxNodes: 1000000,
+  analysisMode: 'movetime'
+});
+
+// Load analysis settings from local storage
+const loadAnalysisSettings = () => {
+  const savedSettings = localStorage.getItem('analysis-settings');
+  if (savedSettings) {
+    try {
+      const settings = JSON.parse(savedSettings);
+      analysisSettings.value = {
+        movetime: settings.movetime || 1000,
+        maxDepth: settings.maxDepth || 20,
+        maxNodes: settings.maxNodes || 1000000,
+        analysisMode: settings.analysisMode || 'movetime'
+      };
+      console.log('加载保存的分析设置:', analysisSettings.value);
+    } catch (e) {
+      console.error('解析保存的分析设置失败:', e);
+    }
+  }
+};
+
+// Listen for local storage changes and update analysis settings in real-time
+let storageCheckInterval: number | null = null;
+
+const watchStorageChanges = () => {
+  // Listen for storage events (for cross-tab sync)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'analysis-settings' && e.newValue) {
+      try {
+        const settings = JSON.parse(e.newValue);
+        analysisSettings.value = {
+          movetime: settings.movetime || 1000,
+          maxDepth: settings.maxDepth || 20,
+          maxNodes: settings.maxNodes || 1000000,
+          analysisMode: settings.analysisMode || 'movetime'
+        };
+        console.log('检测到跨标签页存储变化，更新分析设置:', analysisSettings.value);
+      } catch (e) {
+        console.error('解析存储变化失败:', e);
+      }
+    }
+  });
+  
+  // Listen for settings changes within the same page (via interval check)
+  storageCheckInterval = setInterval(() => {
+    const savedSettings = localStorage.getItem('analysis-settings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        const currentSettings = analysisSettings.value;
+        
+        // Check if there are any changes
+        if (settings.movetime !== currentSettings.movetime ||
+            settings.maxDepth !== currentSettings.maxDepth ||
+            settings.maxNodes !== currentSettings.maxNodes ||
+            settings.analysisMode !== currentSettings.analysisMode) {
+          
+          analysisSettings.value = {
+            movetime: settings.movetime || 1000,
+            maxDepth: settings.maxDepth || 20,
+            maxNodes: settings.maxNodes || 1000000,
+            analysisMode: settings.analysisMode || 'movetime'
+          };
+          console.log('检测到同页面设置变化，更新分析设置:', analysisSettings.value);
+          console.log('变化详情:', {
+            movetime: { old: currentSettings.movetime, new: settings.movetime },
+            maxDepth: { old: currentSettings.maxDepth, new: settings.maxDepth },
+            maxNodes: { old: currentSettings.maxNodes, new: settings.maxNodes },
+            analysisMode: { old: currentSettings.analysisMode, new: settings.analysisMode }
+          });
+        }
+      } catch (e) {
+        console.error('检查设置变化失败:', e);
+      }
+    }
+  }, 50); // Check every 50ms for better responsiveness
+};
+
+// Clean up the storage watcher
+const cleanupStorageWatch = () => {
+  if (storageCheckInterval) {
+    clearInterval(storageCheckInterval);
+    storageCheckInterval = null;
+  }
+};
+
+/* ---------- Generate moves to pass to the engine (only includes actual move operations) ---------- */
+const engineMovesSinceLastFlip = computed(() => {
+  const h = history.value;
+  
+  // Find the index of the last position edit operation
+  let lastPositionEditIndex = -1;
+  for (let i = h.length - 1; i >= 0; i--) {
+    const entry = h[i];
+    if (entry.type === 'adjust' && entry.data.startsWith('position_edit:')) {
+      lastPositionEditIndex = i;
+      break;
+    }
+  }
+  
+  // Keep only the move operations after the last position edit
+  const moves: string[] = [];
+  for (let i = lastPositionEditIndex + 1; i < h.length; i++) {
+    const entry = h[i];
+    // Only include move operations of type 'move'
+    // Exclude all 'adjust' operations (flips, position edits, etc.)
+    if (entry.type === 'move') {
+      moves.push(entry.data);
+    }
+  }
+  
+  // Remove the first move
+  if (moves.length > 0) {
+    moves.shift();
+  }
+  
+  return moves;
+});
+
+/* ---------- UI ---------- */
+const INITIAL_PIECE_COUNTS: { [k: string]: number } = {
+  R: 2, N: 2, B: 2, A: 2, C: 2, P: 5, K: 1,
+  r: 2, n: 2, b: 2, a: 2, c: 2, p: 5, k: 1,
+};
+const unrevealedPiecesForDisplay = computed(() => {
+  const allChars = 'RNBAKCP'.split('');
+  return allChars.flatMap((char) => [
+    {
+      char,
+      name: getPieceNameFromChar(char),
+      count: unrevealedPieceCounts.value[char] || 0,
+      max: INITIAL_PIECE_COUNTS[char],
+    },
+    {
+      char: char.toLowerCase(),
+      name: getPieceNameFromChar(char.toLowerCase()),
+      count: unrevealedPieceCounts.value[char.toLowerCase()] || 0,
+      max: INITIAL_PIECE_COUNTS[char.toLowerCase()],
+    },
+  ]);
+});
+function getPieceImageUrl(pieceName: string): string {
+  return new URL(`../assets/${pieceName}.svg`, import.meta.url).href;
+}
+function getMoveNumber(historyIndex: number): string {
+  const moveCount = history.value
+    .slice(0, historyIndex + 1)
+    .filter((e: HistoryEntry) => e.type === 'move').length;
+  if (moveCount === 0) return '';
+  const moveNumber = Math.floor((moveCount - 1) / 2) + 1;
+  const isSecondMove = (moveCount - 1) % 2 === 1;
+  return `${moveNumber}${isSecondMove ? '...' : '.'}`;
+}
+
+/* ---------- Core Logic ---------- */
+function toggleRedAi() {
+  isRedAi.value = !isRedAi.value;
+}
+function toggleBlackAi() {
+  isBlackAi.value = !isBlackAi.value;
+}
+function isCurrentAiTurnNow() {
+  const redTurn = sideToMove.value === 'red';
+  return (redTurn && isRedAi.value) || (!redTurn && isBlackAi.value);
+}
+function checkAndTriggerAi() {
+  // If the engine is thinking but it's not the AI's turn, stop the analysis first
+  if (isThinking.value && !isCurrentAiTurnNow()) {
+    stopAnalysis();
+    return;
+  }
+  
+  const should =
+    isEngineLoaded.value && 
+    isCurrentAiTurnNow() && 
+    !isThinking.value && 
+    !pendingFlip.value;
+  dbg('CHECK-AI', {
+    side: sideToMove.value,
+    redAI: isRedAi.value,
+    blackAI: isBlackAi.value,
+    thinking: isThinking.value,
+    pendingFlip: !!pendingFlip.value,
+    should,
+  });
+  if (should) startAnalysis(analysisSettings.value, engineMovesSinceLastFlip.value);
+}
+function playBestMove() {
+  if (!bestMove.value) return;
+  playMoveFromUci(bestMove.value);
+}
+function handleMoveClick(moveIndex: number) {
+  replayToMove(moveIndex);
+}
+function manualStartAnalysis() {
+  startAnalysis(analysisSettings.value, engineMovesSinceLastFlip.value);
+}
+
+// Open the about dialog
+function openAboutDialog() {
+  aboutDialogRef.value?.openDialog();
+}
+
+// Load settings when the component is mounted
+onMounted(() => {
+  loadAnalysisSettings();
+  watchStorageChanges();
+});
+
+/* ---------- Watchers ---------- */
+watch(
+  [sideToMove, isRedAi, isBlackAi, isEngineLoaded, pendingFlip],
+  () => {
+    nextTick(() => checkAndTriggerAi());
+  },
+  { immediate: true },
+);
+
+watch(bestMove, (move) => {
+  if (!move) return;
+  dbg('WATCH bestMove', { move, aiTurn: isCurrentAiTurnNow() });
+  
+  if (isEngineLoaded.value && isCurrentAiTurnNow()) {
+    setTimeout(() => {
+      const ok = playMoveFromUci(move);
+      dbg('PLAY', { move, ok });
+      bestMove.value = '';
+      if (!ok) {
+        console.log('着法执行失败:', move, '类型:', typeof move, '长度:', move.length);
+        // In case of a checkmate, do not search again - use trim() to remove spaces
+        const trimmedMove = move.trim();
+        if (trimmedMove === '(none)' || trimmedMove === 'none') {
+          console.log('绝杀情况，停止分析');
+          return;
+        }
+        console.warn('非法着法，重新搜索', move);
+        startAnalysis(analysisSettings.value, engineMovesSinceLastFlip.value);
+      } else {
+        nextTick(() => {
+          checkAndTriggerAi();
+        });
+      }
+    }, 50);
+  }
+});
+
+watch(
+  history,
+  () => {
+    nextTick(() => {
+      if (moveListElement.value) {
+        moveListElement.value.scrollTop = moveListElement.value.scrollHeight;
+      }
+
+    });
+  },
+  { deep: true },
+);
+
+watch(
+  engineOutput,
+  () => {
+    nextTick(() => {
+      if (engineLogElement.value) {
+        engineLogElement.value.scrollTop = engineLogElement.value.scrollHeight;
+      }
+    });
+  },
+  { deep: true },
+);
+
+// Clean up the storage watcher when the component is unmounted
+onUnmounted(() => {
+  cleanupStorageWatch();
+});
+</script>
+
+<style lang="scss" scoped>
+.sidebar {
+  width: 320px;
+  height: 90vh;
+  padding: 15px;
+  background-color: #f4f6f8;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  border-left: 1px solid #ddd;
+  overflow-y: auto;
+}
+.full-btn {
+  width: 100%;
+}
+.half-btn {
+  width: 49%;
+}
+.section {
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
+}
+.section h3,
+.section-title {
+  margin: 0 0 10px;
+  padding-bottom: 5px;
+  font-size: 1rem;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.analysis-output,
+.move-list {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  height: 120px;
+  overflow-y: auto;
+  font-family: 'Courier New', Courier, monospace;
+  border: 1px solid #eee;
+  font-size: 14px;
+}
+.move-item {
+  display: flex;
+  gap: 10px;
+  padding: 3px 5px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.move-item:hover {
+  background-color: #e8f4fd;
+}
+.move-item.current-move {
+  background-color: #bbdefb;
+  font-weight: bold;
+}
+.move-number {
+  font-weight: bold;
+  width: 40px;
+  text-align: right;
+  color: #666;
+}
+.move-uci {
+  flex: 1;
+}
+.move-adjust {
+  color: #888;
+  font-style: italic;
+  font-size: 12px;
+  width: 100%;
+  text-align: center;
+}
+.autoplay-settings {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pool-manager {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.pool-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+.pool-piece-img {
+  width: 24px;
+  height: 24px;
+}
+.pool-count {
+  font-weight: bold;
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+.custom-switch {
+  margin-top: -10px;
+}
+.notation-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.notation-btn {
+  flex: 1;
+}
+
+.notation-info {
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #666;
+
+  p {
+    margin: 4px 0;
+    line-height: 1.4;
+  }
+}
+
+.engine-log {
+  background-color: #2e2e2e;
+  color: #f0f0f0;
+  padding: 10px;
+  border-radius: 5px;
+  height: 150px;
+  overflow-y: scroll;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  white-space: pre-line;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #333;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.3s ease;
+
+  &.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.line-sent {
+  color: #87cefa;
+}
+.line-sent::before {
+  content: '>> ';
+}
+.line-recv {
+  color: #b3b3b3;
+}
+
+.about-section {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+</style>

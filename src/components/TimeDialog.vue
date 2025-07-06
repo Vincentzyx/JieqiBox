@@ -1,0 +1,266 @@
+<template>
+  <v-dialog v-model="isVisible" max-width="500px" persistent>
+    <v-card>
+      <v-card-title class="dialog-title">
+        <span>引擎分析参数设置</span>
+        <v-spacer></v-spacer>
+        <v-btn icon @click="closeDialog">
+          <v-icon color="black">mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <v-card-text class="settings-container">
+        <div class="setting-item">
+          <label class="setting-label">步时 (毫秒)</label>
+          <v-text-field
+            v-model.number="movetime"
+            type="number"
+            variant="outlined"
+            density="compact"
+            :min="100"
+            :max="10000"
+            :step="100"
+            hide-details
+            class="setting-input"
+            @update:model-value="updateSettings"
+          ></v-text-field>
+        </div>
+
+        <div class="setting-item">
+          <label class="setting-label">最大层数</label>
+          <v-text-field
+            v-model.number="maxDepth"
+            type="number"
+            variant="outlined"
+            density="compact"
+            :min="1"
+            :max="100"
+            :step="1"
+            hide-details
+            class="setting-input"
+            @update:model-value="updateSettings"
+          ></v-text-field>
+        </div>
+
+        <div class="setting-item">
+          <label class="setting-label">最大节点数</label>
+          <v-text-field
+            v-model.number="maxNodes"
+            type="number"
+            variant="outlined"
+            density="compact"
+            :min="1000"
+            :max="10000000"
+            :step="1000"
+            hide-details
+            class="setting-input"
+            @update:model-value="updateSettings"
+          ></v-text-field>
+        </div>
+
+        <div class="setting-item">
+          <label class="setting-label">分析模式</label>
+          <v-select
+            v-model="analysisMode"
+            :items="analysisModes"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="setting-input"
+            @update:model-value="updateSettings"
+          ></v-select>
+        </div>
+      </v-card-text>
+
+      <v-card-actions class="dialog-actions">
+        <v-btn color="grey" @click="resetToDefaults">恢复默认</v-btn>
+        <v-btn color="error" @click="clearSettings">清除配置</v-btn>
+        <v-spacer></v-spacer>
+        <v-btn color="primary" @click="closeDialog">确定</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+
+// Analysis mode options
+const analysisModes = [
+  { title: '按时间分析', value: 'movetime' },
+  { title: '按层数分析', value: 'depth' },
+  { title: '按节点数分析', value: 'nodes' }
+];
+
+// Component properties definition
+interface Props {
+  modelValue: boolean;
+}
+
+const props = defineProps<Props>();
+
+// Component events definition
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean];
+  'settings-changed': [settings: AnalysisSettings];
+}>();
+
+// Analysis settings interface
+interface AnalysisSettings {
+  movetime: number;
+  maxDepth: number;
+  maxNodes: number;
+  analysisMode: string;
+}
+
+// Reactive data
+const movetime = ref(1000);
+const maxDepth = ref(20);
+const maxNodes = ref(1000000);
+const analysisMode = ref('movetime');
+
+// Computed property - dialog visibility state
+const isVisible = computed({
+  get: () => props.modelValue,
+  set: (value: boolean) => emit('update:modelValue', value)
+});
+
+// Local storage key name
+const storageKey = 'analysis-settings';
+
+// Load settings from local storage
+const loadSettings = () => {
+  const savedSettings = localStorage.getItem(storageKey);
+  if (savedSettings) {
+    const settings = JSON.parse(savedSettings);
+    movetime.value = settings.movetime || 1000;
+    maxDepth.value = settings.maxDepth || 20;
+    maxNodes.value = settings.maxNodes || 1000000;
+    analysisMode.value = settings.analysisMode || 'movetime';
+  }
+};
+
+// Save settings to local storage
+const saveSettings = () => {
+  const settings = {
+    movetime: movetime.value,
+    maxDepth: maxDepth.value,
+    maxNodes: maxNodes.value,
+    analysisMode: analysisMode.value
+  };
+  localStorage.setItem(storageKey, JSON.stringify(settings));
+};
+
+// Update settings and notify parent component
+const updateSettings = () => {
+  saveSettings();
+  const settings: AnalysisSettings = {
+    movetime: movetime.value,
+    maxDepth: maxDepth.value,
+    maxNodes: maxNodes.value,
+    analysisMode: analysisMode.value
+  };
+  emit('settings-changed', settings);
+  console.log('TimeDialog: 设置已更新并保存:', settings);
+};
+
+// Reset to default values
+const resetToDefaults = () => {
+  movetime.value = 1000;
+  maxDepth.value = 20;
+  maxNodes.value = 1000000;
+  analysisMode.value = 'movetime';
+  updateSettings();
+};
+
+// Clear settings
+const clearSettings = () => {
+  if (confirm('确定要清除所有分析参数配置吗？此操作不可恢复。')) {
+    // Reset to default values
+    movetime.value = 1000;
+    maxDepth.value = 20;
+    maxNodes.value = 1000000;
+    analysisMode.value = 'movetime';
+    
+    // Clear local storage
+    localStorage.removeItem(storageKey);
+    
+    // Notify parent component that settings have changed
+    updateSettings();
+    
+    console.log('已清除分析参数配置');
+  }
+};
+
+// Close the dialog
+const closeDialog = () => {
+  // Ensure current settings are saved when closing the dialog
+  saveSettings();
+  isVisible.value = false;
+};
+
+// Load settings after the component is mounted
+onMounted(() => {
+  loadSettings();
+});
+
+// Expose methods to the parent component
+defineExpose({
+  getSettings: () => ({
+    movetime: movetime.value,
+    maxDepth: maxDepth.value,
+    maxNodes: maxNodes.value,
+    analysisMode: analysisMode.value
+  })
+});
+</script>
+
+<style lang="scss" scoped>
+.dialog-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 24px;
+  
+  .v-icon {
+    color: white;
+  }
+}
+
+.settings-container {
+  padding: 20px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.setting-label {
+  font-weight: 500;
+  color: #333;
+  min-width: 120px;
+  font-size: 14px;
+}
+
+.setting-input {
+  flex: 1;
+  max-width: 200px;
+}
+
+.dialog-actions {
+  padding: 16px 24px;
+  background: #f9f9f9;
+  border-top: 1px solid #e0e0e0;
+  
+  .v-btn {
+    text-transform: none;
+    font-weight: 500;
+  }
+}
+</style>

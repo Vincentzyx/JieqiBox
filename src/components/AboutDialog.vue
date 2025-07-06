@@ -1,0 +1,192 @@
+<template>
+  <v-dialog v-model="dialog" max-width="500px">
+    <v-card>
+      <v-card-title class="text-h5">
+        <v-icon icon="mdi-information" class="mr-2"></v-icon>
+        关于 JieqiBox
+      </v-card-title>
+      
+      <v-card-text>
+        <div class="about-content">
+          <div class="app-info">
+            <h3>JieqiBox</h3>
+            <p class="version">版本 {{ version }}</p>
+            <p class="description">
+              一个现代化的揭棋分析和对弈桌面应用程序，基于 Tauri 和 Vue 3 构建。
+            </p>
+          </div>
+          
+          <v-divider class="my-4"></v-divider>
+          
+          <div class="author-info">
+            <h4>作者</h4>
+            <p><strong>Velithia</strong></p>
+          </div>
+          
+          <v-divider class="my-4"></v-divider>
+          
+          <div class="links">
+            <h4>相关链接</h4>
+            <div class="link-item">
+              <v-icon icon="mdi-github" class="mr-2"></v-icon>
+              <v-btn 
+                variant="text" 
+                color="primary"
+                @click="openExternalLink('https://github.com/Velithia/JieqiBox')"
+                class="link-btn"
+              >
+                GitHub 仓库
+              </v-btn>
+            </div>
+            <div class="link-item">
+              <v-icon icon="mdi-download" class="mr-2"></v-icon>
+              <v-btn 
+                variant="text" 
+                color="primary"
+                @click="openExternalLink('https://github.com/Velithia/JieqiBox/releases')"
+                class="link-btn"
+              >
+                下载最新版本
+              </v-btn>
+            </div>
+          </div>
+          
+          <v-divider class="my-4"></v-divider>
+          
+          <div class="license-info">
+            <h4>许可证</h4>
+            <p>MIT License</p>
+            <v-btn 
+              variant="text" 
+              color="primary"
+              @click="openExternalLink('https://opensource.org/licenses/MIT')"
+              class="link-btn"
+            >
+              查看许可证详情
+            </v-btn>
+          </div>
+        </div>
+      </v-card-text>
+      
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="primary" @click="dialog = false">
+          关闭
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+
+// Import version from package.json
+import packageJson from '../../package.json';
+
+// Dialog visibility state
+const dialog = ref(false);
+
+// Get version from package.json
+const version = packageJson.version;
+
+// Method to open the dialog
+const openDialog = () => {
+  dialog.value = true;
+};
+
+// Method to open an external link using Tauri's API
+const openExternalLink = async (url: string) => {
+  try {
+    // Invoke the Rust backend command to open the URL in the default browser
+    await invoke('open_external_url', { url });
+  } catch (error) {
+    console.error('Failed to open external link:', error);
+  }
+};
+
+// Expose the openDialog method to the parent component
+defineExpose({
+  openDialog
+});
+</script>
+
+<style lang="scss" scoped>
+.about-content {
+  .app-info {
+    text-align: center;
+    margin-bottom: 16px;
+    
+    h3 {
+      color: #1976d2;
+      margin-bottom: 8px;
+      font-size: 1.5rem;
+    }
+    
+    .version {
+      color: #666;
+      font-size: 0.9rem;
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+    
+    .description {
+      color: #666;
+      line-height: 1.5;
+      margin: 0;
+    }
+  }
+  
+  h4 {
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+  }
+  
+  .author-info {
+    p {
+      margin: 0;
+      font-size: 1rem;
+    }
+  }
+  
+  .links {
+    .link-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      
+      .link-btn {
+        text-transform: none;
+        font-weight: 500;
+        padding: 0;
+        min-width: auto;
+        
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+  
+  .license-info {
+    p {
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+    
+    .link-btn {
+      text-transform: none;
+      font-weight: 500;
+      padding: 0;
+      min-width: auto;
+      font-size: 0.9rem;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+</style>
