@@ -681,14 +681,9 @@ export function useChessGame() {
       case 'pawn':
         // Pawn's move validation needs to consider the board flip state
         let isOverRiver;
+        isOverRiver = pieceSide === 'red' ? piece.row <= 4 : piece.row >= 5;
         if (isBoardFlipped.value) {
-          // Flipped: Red is at the bottom (rows 0-4), Black is at the top (rows 5-9)
-          // River crossing check: Red pawns in rows 0-4, Black pawns in rows 5-9
-          isOverRiver = pieceSide === 'red' ? piece.row <= 4 : piece.row >= 5;
-        } else {
-          // Normal: Red is at the top (rows 7-9), Black is at the bottom (rows 0-2)
-          // River crossing check: Red pawns in rows 7-9, Black pawns in rows 0-2
-          isOverRiver = pieceSide === 'red' ? piece.row <= 4 : piece.row >= 5;
+          isOverRiver = !isOverRiver;
         }
         
         if (isOverRiver) {
@@ -762,7 +757,9 @@ export function useChessGame() {
     const lastMove = { from: { row: originalRow, col: originalCol }, to: { row: targetRow, col: targetCol } };
 
     if (targetPiece) {
-      if (!targetPiece.isKnown) {
+      // In free flip mode, capturing opponent's hidden piece should not affect their unrevealed pool
+      // Only in random flip mode, we randomly remove a piece from opponent's pool
+      if (!targetPiece.isKnown && flipMode.value === 'random') {
         const targetSide = getPieceSide(targetPiece);
         const opponentPoolChars = Object.keys(unrevealedPieceCounts.value)
             .filter(char => (unrevealedPieceCounts.value[char] > 0) && (getPieceNameFromChar(char).startsWith(targetSide)));
