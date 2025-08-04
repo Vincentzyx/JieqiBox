@@ -291,6 +291,7 @@ export default {
     linearYAxis: 'Linear Y-Axis',
     showOnlyLines: 'Show Only Lines',
     blackPerspective: 'Black Perspective',
+    clampToThousand: 'Clamp Score Range to ±1000',
     opening: 'Opening',
     noData: 'No analysis data available',
     newGame: 'New Game',

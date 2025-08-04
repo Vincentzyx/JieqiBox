@@ -284,6 +284,7 @@ export default {
     linearYAxis: '线性Y轴',
     showOnlyLines: '仅显示线条',
     blackPerspective: '黑方视角',
+    clampToThousand: '限制分值范围到±1000',
     opening: '开局',
     noData: '暂无分析数据',
     newGame: '新对局',

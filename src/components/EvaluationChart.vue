@@ -61,6 +61,13 @@
         hide-details
         density="compact"
       />
+      <v-switch
+        v-model="clampToThousand"
+        :label="$t('evaluationChart.clampToThousand')"
+        color="primary"
+        hide-details
+        density="compact"
+      />
     </div>
   </div>
 </template>
@@ -87,7 +94,7 @@
 
   /* ---------- Display State ---------- */
   // Get persistent settings from the composable
-  const { showMoveLabels, useLinearYAxis, showOnlyLines, blackPerspective } =
+  const { showMoveLabels, useLinearYAxis, showOnlyLines, blackPerspective, clampToThousand } =
     useEvaluationChartSettings()
   const tooltipVisible = ref(false)
   const tooltipStyle = ref({ left: '0px', top: '0px' })
@@ -122,7 +129,8 @@
       moveIndex: number
       moveNumber: number
       moveText: string
-      score: number | null
+      score: number | null // 用于显示的分数（可能被clamp）
+      originalScore: number | null // 原始分数
       time: number | null
       isRedMove: boolean
     }> = []
@@ -133,6 +141,7 @@
       moveNumber: 0,
       moveText: t('evaluationChart.opening'),
       score: null,
+      originalScore: null,
       time: null,
       isRedMove: false,
     })
@@ -152,6 +161,14 @@
           converted = -converted
         }
 
+        // Keep original score before any clamp for tooltip display
+        let originalConverted = converted
+
+        // Apply clamp to thousand if enabled (only for display)
+        if (converted !== null && converted !== undefined && clampToThousand.value) {
+          converted = Math.max(-1000, Math.min(1000, converted))
+        }
+
         // Flip evaluation if flipEvaluation setting is enabled
         if (
           converted !== null &&
@@ -161,11 +178,21 @@
           converted = -converted
         }
 
+        // Also flip original score if flipEvaluation is enabled
+        if (
+          originalConverted !== null &&
+          originalConverted !== undefined &&
+          blackPerspective.value
+        ) {
+          originalConverted = -originalConverted
+        }
+
         data.push({
           moveIndex: index + 1,
           moveNumber,
           moveText,
           score: converted ?? null,
+          originalScore: originalConverted ?? null,
           time: entry.engineTime ?? null,
           isRedMove,
         })
@@ -694,11 +721,8 @@
     if (closestPoint && closestPoint.score !== null && distance < threshold) {
       tooltipVisible.value = true
 
-      // Apply flip evaluation for tooltip display
-      let displayScore = closestPoint.score
-      if (blackPerspective.value) {
-        displayScore = -displayScore
-      }
+      // Use original score for tooltip display instead of clamped score
+      let displayScore = closestPoint.originalScore ?? closestPoint.score
 
       tooltipData.value = {
         move: closestPoint.moveText,
@@ -740,7 +764,7 @@
     { deep: true }
   )
   // Watch for settings changes to redraw chart
-  watch([showMoveLabels, useLinearYAxis, showOnlyLines, blackPerspective], () =>
+  watch([showMoveLabels, useLinearYAxis, showOnlyLines, blackPerspective, clampToThousand], () =>
     nextTick(drawChart)
   )
 
