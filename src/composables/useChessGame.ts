@@ -1745,11 +1745,26 @@ export function useChessGame() {
     }
   }
 
-  // Load game notation from a file
+  // Load game notation from a file (supports both JSON and XQF formats)
   const loadGameNotation = async (file: File) => {
     try {
-      const text = await file.text()
-      const notation: GameNotation = JSON.parse(text)
+      let notation: GameNotation
+
+      // Check file extension to determine format
+      const fileName = file.name.toLowerCase()
+      const isXQF = fileName.endsWith('.xqf')
+
+      if (isXQF) {
+        // Handle XQF format
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = new Uint8Array(arrayBuffer)
+        notation = convertXQFToGameNotation(buffer)
+        console.log(notation);
+      } else {
+        // Handle JSON format (existing logic)
+        const text = await file.text()
+        notation = JSON.parse(text)
+      }
 
       // Validate the game notation format
       if (!notation.metadata || !notation.moves) {
@@ -1818,7 +1833,7 @@ export function useChessGame() {
   const openGameNotation = () => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.json'
+    input.accept = '.json,.xqf'
     input.onchange = async event => {
       const target = event.target as HTMLInputElement
       if (target.files && target.files[0]) {
@@ -2058,6 +2073,435 @@ export function useChessGame() {
     return newCounts
   }
 
+  // XQF format conversion functions (reused from provided library)
+  const xqfb2i = [
+    'a9',
+    'b9',
+    'c9',
+    'd9',
+    'e9',
+    'f9',
+    'g9',
+    'h9',
+    'i9',
+    'a8',
+    'b8',
+    'c8',
+    'd8',
+    'e8',
+    'f8',
+    'g8',
+    'h8',
+    'i8',
+    'a7',
+    'b7',
+    'c7',
+    'd7',
+    'e7',
+    'f7',
+    'g7',
+    'h7',
+    'i7',
+    'a6',
+    'b6',
+    'c6',
+    'd6',
+    'e6',
+    'f6',
+    'g6',
+    'h6',
+    'i6',
+    'a5',
+    'b5',
+    'c5',
+    'd5',
+    'e5',
+    'f5',
+    'g5',
+    'h5',
+    'i5',
+    'a4',
+    'b4',
+    'c4',
+    'd4',
+    'e4',
+    'f4',
+    'g4',
+    'h4',
+    'i4',
+    'a3',
+    'b3',
+    'c3',
+    'd3',
+    'e3',
+    'f3',
+    'g3',
+    'h3',
+    'i3',
+    'a2',
+    'b2',
+    'c2',
+    'd2',
+    'e2',
+    'f2',
+    'g2',
+    'h2',
+    'i2',
+    'a1',
+    'b1',
+    'c1',
+    'd1',
+    'e1',
+    'f1',
+    'g1',
+    'h1',
+    'i1',
+    'a0',
+    'b0',
+    'c0',
+    'd0',
+    'e0',
+    'f0',
+    'g0',
+    'h0',
+    'i0',
+  ]
+
+  // Convert array to FEN string (board part)
+  const arrayToFen = (array: string[]): string => {
+    const tempArr: (string | number)[] = []
+    let blank = 0
+
+    for (let i = 0; i < 90; ++i) {
+      if (array[i] === '*') {
+        ++blank
+      } else {
+        if (blank) {
+          tempArr.push(blank)
+          blank = 0
+        }
+        tempArr.push(array[i])
+      }
+
+      if (i % 9 === 8) {
+        if (blank) {
+          tempArr.push(blank)
+          blank = 0
+        }
+        tempArr.push('/')
+      }
+    }
+
+    --tempArr.length
+    return tempArr.join('')
+  }
+
+  // Parse XQF header
+  const parseXQFHeader = (buffer: Uint8Array) => {
+    const S = (start: number, length: number) => {
+      return Array.from(buffer.slice(start, start + length))
+    }
+
+    const K = (start: number, length: number) => {
+      const array = buffer.slice(start, start + length).reverse()
+      let sum = 0
+      for (let i = 0; i < array.length; ++i) {
+        sum += array[i] * Math.pow(256, i)
+      }
+      return sum
+    }
+
+    return {
+      Version: buffer[2],
+      KeyMask: buffer[3],
+      KeyOr: S(8, 4),
+      KeySum: buffer[12],
+      KeyXYp: buffer[13],
+      KeyXYf: buffer[14],
+      KeyXYt: buffer[15],
+      QiziXY: S(16, 32),
+      PlayStepNo: K(48, 2),
+      WhoPlay: buffer[50],
+      PlayResult: buffer[51],
+      PlayNodes: S(52, 4),
+      PTreePos: S(56, 4),
+      Type: buffer[64],
+      Title: S(81, buffer[80]),
+      MatchName: S(209, buffer[208]),
+      MatchTime: S(273, buffer[272]),
+      MatchAddr: S(289, buffer[288]),
+      RedPlayer: S(305, buffer[304]),
+      BlkPlayer: S(321, buffer[320]),
+      TimeRule: S(337, buffer[336]),
+      RedTime: S(401, buffer[400]),
+      BlkTime: S(417, buffer[416]),
+      RMKWriter: S(465, buffer[464]),
+      Author: S(481, buffer[480]),
+    }
+  }
+
+  // Calculate XQF keys
+  const calculateXQFKey = (header: any) => {
+    const key = {
+      F32: new Array(32).fill(0),
+      XYp: 0,
+      XYf: 0,
+      XYt: 0,
+      RMK: 0,
+    }
+
+    if (header.Version < 16) {
+      return key
+    }
+
+    key.XYp = ((header.KeyXYp * header.KeyXYp * 54 + 221) * header.KeyXYp) & 255
+    key.XYf = ((header.KeyXYf * header.KeyXYf * 54 + 221) * key.XYp) & 255
+    key.XYt = ((header.KeyXYt * header.KeyXYt * 54 + 221) * key.XYf) & 255
+    key.RMK = (((header.KeySum * 256 + header.KeyXYp) % 32000) + 767) & 65535
+
+    const FKey = [
+      (header.KeySum & header.KeyMask) | header.KeyOr[0],
+      (header.KeyXYp & header.KeyMask) | header.KeyOr[1],
+      (header.KeyXYf & header.KeyMask) | header.KeyOr[2],
+      (header.KeyXYt & header.KeyMask) | header.KeyOr[3],
+    ]
+
+    const copyrightString = '[(C) Copyright Mr. Dong Shiwei.]'
+    for (let i = 0; i < 32; ++i) {
+      key.F32[i] = FKey[i % 4] & copyrightString.charCodeAt(i)
+    }
+
+    return key
+  }
+
+  // Convert XQF to game notation
+  const convertXQFToGameNotation = (buffer: Uint8Array): GameNotation => {
+    const XQFHeader = parseXQFHeader(buffer)
+    const XQFKey = calculateXQFKey(XQFHeader)
+
+    // First, extract the actual piece positions from XQF to understand the game
+    const fenArray = new Array(91).join('*').split('')
+    const fenPiece = 'RNBAKABNRCCPPPPPrnbakabnrccppppp'
+    const actualPiecePositions: { [pos: string]: string } = {}
+
+    for (let i = 0; i < 32; ++i) {
+      let pieceKey: number, piecePos: number
+
+      if (XQFHeader.Version > 11) {
+        pieceKey = (XQFKey.XYp + i + 1) & 31
+        piecePos = (XQFHeader.QiziXY[i] - XQFKey.XYp) & 255
+      } else {
+        pieceKey = i
+        piecePos = XQFHeader.QiziXY[i]
+      }
+
+      if (piecePos < 90) {
+        const X = Math.floor(piecePos / 10)
+        const Y = 9 - (piecePos % 10)
+        const piece = fenPiece.charAt(pieceKey)
+        actualPiecePositions[`${Y},${X}`] = piece
+        
+        // For jieqi, all pieces start as hidden
+        const isRed = piece === piece.toUpperCase()
+        fenArray[Y * 9 + X] = isRed ? 'X' : 'x'
+      }
+    }
+
+    // Create initial FEN with all pieces hidden
+    let initialFen = arrayToFen(fenArray)
+    initialFen += XQFHeader.WhoPlay === 1 ? ' b ' : ' w '
+
+    // Generate hidden piece counts for jieqi format
+    const hiddenCounts: { [key: string]: number } = {
+      R: 2, N: 2, B: 2, A: 2, K: 1, C: 2, P: 5,
+      r: 2, n: 2, b: 2, a: 2, k: 1, c: 2, p: 5,
+    }
+
+    let hiddenStr = ''
+    const hiddenOrder = 'RNBAKCP'
+    hiddenOrder.split('').forEach(char => {
+      const redCount = hiddenCounts[char] || 0
+      const blackCount = hiddenCounts[char.toLowerCase()] || 0
+      if (redCount > 0) hiddenStr += char + redCount
+      if (blackCount > 0) hiddenStr += char.toLowerCase() + blackCount
+    })
+
+    initialFen += hiddenStr + ' 0 1'
+
+    // Decode move data
+    let decode: number[]
+    if (XQFHeader.Version > 15) {
+      decode = []
+      for (let i = 1024; i < buffer.length; ++i) {
+        decode.push((buffer[i] - XQFKey.F32[i % 32]) & 255)
+      }
+    } else {
+      decode = Array.from(buffer.slice(1024))
+    }
+
+    // Helper functions for move simulation
+    const K = (start: number, length: number) => {
+      const array = decode.slice(start, start + length)
+      let sum = 0
+      for (let i = 0; i < array.length; ++i) {
+        sum += array[i] * Math.pow(256, i)
+      }
+      return sum
+    }
+
+    // Simulate the game to generate proper FEN for each move
+    const moves: HistoryEntry[] = []
+    
+    // Game state tracking
+    let boardState = fenArray.slice() // Current board state
+    let currentHiddenCounts = { ...hiddenCounts } // Current hidden piece counts
+    let sideToMove = XQFHeader.WhoPlay === 1 ? 'b' : 'w'
+    let halfmoveClock = 0
+    let fullmoveNumber = 1
+
+    // Helper to generate FEN from current state
+    const generateCurrentFen = (): string => {
+      let fen = arrayToFen(boardState)
+      fen += ' ' + sideToMove + ' '
+      
+      // Generate hidden counts string
+      let hiddenPart = ''
+      hiddenOrder.split('').forEach(char => {
+        const redCount = currentHiddenCounts[char] || 0
+        const blackCount = currentHiddenCounts[char.toLowerCase()] || 0
+        if (redCount > 0) hiddenPart += char + redCount
+        if (blackCount > 0) hiddenPart += char.toLowerCase() + blackCount
+      })
+      
+      fen += (hiddenPart || '-') + ' '
+      fen += halfmoveClock + ' ' + fullmoveNumber
+      
+      return fen
+    }
+
+    // Parse and simulate moves
+    for (let pos = 0; pos < decode.length; ) {
+      // Calculate move coordinates
+      const Pf = (decode[pos] - 24 - XQFKey.XYf) & 255
+      const Pt = (decode[pos + 1] - 32 - XQFKey.XYt) & 255
+      const Xf = Math.floor(Pf / 10)
+      const Xt = Math.floor(Pt / 10)
+      const Yf = 9 - (Pf % 10)
+      const Yt = 9 - (Pt % 10)
+
+      // Extract comment if present
+      let comment = ''
+      let nextOffset = 4
+
+      if (XQFHeader.Version > 10) {
+        if (decode[pos + 2] & 32) {
+          const commentLen = K(pos + 4, 4) - XQFKey.RMK
+          const commentBytes = decode.slice(pos + 8, pos + 8 + commentLen)
+          comment = String.fromCharCode(
+            ...commentBytes.filter(b => b > 0 && b < 128)
+          )
+          nextOffset = commentLen + 8
+        }
+      }
+
+      if (pos > 0) {
+        const move = xqfb2i[Yf * 9 + Xf] + xqfb2i[Yt * 9 + Xt]
+        
+        // Simulate the move
+        const fromIndex = Yf * 9 + Xf
+        const toIndex = Yt * 9 + Xt
+        const movingPiece = boardState[fromIndex]
+        const capturedPiece = boardState[toIndex]
+        
+        // Check if this move reveals a piece
+        const actualPiece = actualPiecePositions[`${Yf},${Xf}`]
+        if (actualPiece && (movingPiece === 'X' || movingPiece === 'x')) {
+          // Reveal the piece
+          boardState[fromIndex] = actualPiece
+          // Decrement hidden count
+          currentHiddenCounts[actualPiece]--
+          halfmoveClock = 0 // Reset halfmove clock on reveal
+        } else if (capturedPiece !== '*') {
+          halfmoveClock = 0 // Reset halfmove clock on capture
+        } else {
+          halfmoveClock++ // Increment halfmove clock
+        }
+        
+        // Execute the move
+        boardState[toIndex] = boardState[fromIndex]
+        boardState[fromIndex] = '*'
+        
+        // If capturing a hidden piece, randomly remove from opponent's pool
+        if (capturedPiece === 'X' || capturedPiece === 'x') {
+          const isRedCapture = capturedPiece === 'X'
+          const poolChars = Object.keys(currentHiddenCounts).filter(char => {
+            const count = currentHiddenCounts[char]
+            return count > 0 && (isRedCapture ? 
+              char === char.toUpperCase() : 
+              char === char.toLowerCase())
+          })
+          
+          if (poolChars.length > 0) {
+            // Randomly pick one to remove
+            const charToRemove = poolChars[Math.floor(Math.random() * poolChars.length)]
+            currentHiddenCounts[charToRemove]--
+          }
+        }
+        
+        // Add move entry
+        moves.push({
+          type: 'move',
+          data: move,
+          fen: generateCurrentFen(),
+          comment: comment || undefined,
+        })
+        
+        // Update side to move and move counters
+        if (sideToMove === 'b') {
+          fullmoveNumber++
+        }
+        sideToMove = sideToMove === 'w' ? 'b' : 'w'
+      }
+
+      pos += nextOffset
+    }
+
+    // Extract metadata
+    const textDecoder = new TextDecoder('utf-8', { ignoreBOM: true })
+
+    const extractText = (bytes: number[]): string => {
+      const validBytes = bytes.filter(b => b !== 0)
+      try {
+        return textDecoder.decode(new Uint8Array(validBytes)).trim()
+      } catch {
+        return String.fromCharCode(
+          ...validBytes.filter(b => b > 0 && b < 128)
+        ).trim()
+      }
+    }
+
+    const redPlayer = extractText(XQFHeader.RedPlayer) || '红方'
+    const blackPlayer = extractText(XQFHeader.BlkPlayer) || '黑方'
+    const matchName = extractText(XQFHeader.MatchName) || '揭棋对局'
+    const matchTime =
+      extractText(XQFHeader.MatchTime) || new Date().toISOString().split('T')[0]
+
+    return {
+      metadata: {
+        event: matchName,
+        site: 'jieqibox',
+        date: matchTime,
+        white: redPlayer,
+        black: blackPlayer,
+        result: '*',
+        initialFen: initialFen,
+        flipMode: 'random',
+        currentFen: moves.length > 0 ? moves[moves.length - 1].fen : initialFen,
+      },
+      moves,
+    }
+  }
+
   // Determine game result based on current position
   const determineGameResult = (): string => {
     // Get all legal moves for the current side to move
@@ -2128,5 +2572,7 @@ export function useChessGame() {
     updateAllPieceZIndexes,
     updateMoveComment,
     determineGameResult,
+    convertXQFToGameNotation,
+    loadGameNotation,
   }
 }
