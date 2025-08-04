@@ -2455,6 +2455,11 @@ export function useChessGame() {
             currentHiddenCounts[charToRemove]--
           }
         }
+
+        // Try to extract engine score and time from comment for Fishtest records.
+        // Format: s:-187 t:15949 rt:15950 d:26 sd:18 n:3091224 nps:193819 h:423
+        const engineScore = comment.match(/s:(-?\d+)/)?.[1]
+        const engineTime = comment.match(/t:(\d+)/)?.[1]
         
         // Add move entry
         moves.push({
@@ -2462,6 +2467,8 @@ export function useChessGame() {
           data: move,
           fen: generateCurrentFen(),
           comment: comment || undefined,
+          engineScore: engineScore ? parseInt(engineScore) : undefined,
+          engineTime: engineTime ? parseInt(engineTime) : undefined,
         })
         
         // Update side to move and move counters
