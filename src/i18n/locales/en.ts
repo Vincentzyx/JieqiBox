@@ -227,6 +227,25 @@ export default {
     manageEngines: 'Manage',
     unloadEngine: 'Unload Engine',
     noEngineLoaded: 'No engine is currently loaded.',
+    // Match mode related
+    enterMatchMode: 'Match Mode',
+    exitMatchMode: 'Exit Match Mode',
+    startMatch: 'Start Match',
+    stopMatch: 'Stop Match',
+    jaiSettings: 'Match Options',
+    matchInfo: 'Match Information',
+    matchStatus: 'Status',
+    gameProgress: 'Progress',
+    engineInfo: 'Engine',
+    lastResult: 'Result',
+    matchWld: 'WLD',
+    eloRating: 'Elo Rating',
+    eloCalculator: 'Elo Calculator',
+    matchEngines: 'Engines',
+    running: 'Running',
+    stopped: 'Stopped',
+    noMatchEngine: 'No match engine loaded',
+    noAnalysis: 'No analysis available',
     // Navigation buttons
     goToFirst: 'Go to First Move',
     goToPrevious: 'Go to Previous Move',
@@ -258,6 +277,61 @@ export default {
     engineAddedSuccess: 'Engine {name} was added successfully!',
   },
 
+  // JAI options dialog
+  jaiOptions: {
+    title: 'JAI Match Options',
+    loadingText: 'Loading engine options...',
+    noEngineLoaded: 'No match engine is currently loaded.',
+    pleaseLoadEngineFirst:
+      'Please load a match engine first to configure its options.',
+    loadEngine: 'Load Engine',
+    noOptionsAvailable: 'No JAI options available for this engine.',
+    refreshOptions: 'Refresh Options',
+    range: 'Range',
+    execute: 'Execute',
+    resetToDefaults: 'Reset to Defaults',
+    clearSettings: 'Clear Settings',
+    confirmClearSettings:
+      'Are you sure you want to clear all JAI option configurations for the current engine? This action cannot be undone.',
+    settingsCleared: 'JAI option configurations cleared',
+    // JAI option descriptions
+    optionDescriptions: {
+      Engine1Path: 'Path to the first engine for match competition.',
+      Engine2Path: 'Path to the second engine for match competition.',
+      TotalRounds: 'Total number of rounds to play in the match.',
+      TimeControl: 'Time control settings for each engine.',
+      BookFile: 'Opening book file to use for the match.',
+      AdjudicationRule: 'Rules for adjudicating drawn or decisive positions.',
+    },
+  },
+
+  // JAI messages
+  jai: {
+    engineReady: 'Match engine is ready',
+    matchStarted: 'Match started',
+    matchStopped: 'Match stopped',
+    gameProgress: 'Game {current} of {total}',
+    matchResult: 'Match result: {result}',
+  },
+
+  // Elo Calculator
+  eloCalculator: {
+    title: 'Elo Performance Rating Calculator',
+    inputSection: 'Input WLD Statistics',
+    wins: 'Wins',
+    losses: 'Losses',
+    draws: 'Draws',
+    totalGames: 'Total Games',
+    resultsSection: 'Calculation Results',
+    performance: 'Performance Rating',
+    errorMargin: 'Error Margin',
+    confidenceInterval: '95% Confidence Interval',
+    scoreRate: 'Score Rate',
+    standardError: 'Standard Error',
+    noResults: 'No results available',
+    close: 'Close',
+  },
+
   // Error messages
   errors: {
     saveNotationFailed: 'Failed to save notation',
@@ -270,6 +344,7 @@ export default {
       'Error: Black side {darkCount} dark pieces > {poolCount} pool',
     pieceCountExceeded: 'Error: {pieceName} total count exceeded!',
     engineLoadFailed: 'Failed to load engine {name}: {error}',
+    jaiEngineLoadFailed: 'Failed to load JAI match engine {name}: {error}',
     engineUnloadFailed: 'Failed to unload engine',
     failedToOpenFileSelector: 'Failed to open file selector',
     failedToProcessEngine: 'Failed to process engine file',
@@ -287,10 +362,16 @@ export default {
   // Evaluation Chart
   evaluationChart: {
     title: 'Evaluation Chart',
+    rightClickHint: 'Right-click for options',
     showMoveLabels: 'Show Move Labels',
     linearYAxis: 'Linear Y-Axis',
     showOnlyLines: 'Show Only Lines',
     blackPerspective: 'Black Perspective',
+    clampYAxis: 'Clamp Y-Axis',
+    clampValue: 'Clamp Value',
+    colorScheme: 'Color Scheme',
+    redGreen: 'Red-Green',
+    blueOrange: 'Blue-Orange',
     opening: 'Opening',
     noData: 'No analysis data available',
     newGame: 'New Game',

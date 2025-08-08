@@ -541,29 +541,84 @@ export function useChessGame() {
         (engineState.isThinking?.value ||
           isAiMove ||
           isManualAnalysis.value ||
-          engineState.isPondering?.value)
+          engineState.isPondering?.value ||
+          (window as any).__JAI_ENGINE__?.isMatchRunning?.value)
       ) {
         console.log(
           '[DEBUG] RECORD_AND_FINALIZE: Engine was thinking or this is an AI move, extracting data...'
         )
 
-        // Extract score from current analysis
+        // Fallback to UCI engine analysis extraction
         const analysisText = engineState.analysis?.value || ''
         console.log('[DEBUG] RECORD_AND_FINALIZE: Analysis text:', analysisText)
 
-        // Try to extract score from the last valid engine output line that contains score
-        const engineOutput = engineState.engineOutput?.value || []
+        // In match mode, use JAI engine output; otherwise, use UCI engine output
+        const isMatchMode = (window as any).__MATCH_MODE__ || false
+        const jaiEngine = (window as any).__JAI_ENGINE__
+        const engineOutput =
+          isMatchMode && jaiEngine?.engineOutput?.value
+            ? jaiEngine.engineOutput.value
+            : engineState.engineOutput?.value || []
+
+        console.log('[DEBUG] RECORD_AND_FINALIZE: Using engine output:', {
+          isMatchMode,
+          outputSource: isMatchMode ? 'JAI' : 'UCI',
+          outputLength: engineOutput.length,
+        })
+
         let lastValidScoreLine = ''
-        for (let i = engineOutput.length - 1; i >= 0; i--) {
-          const line = engineOutput[i]
-          if (
-            line.kind === 'recv' &&
-            line.text.includes('score') &&
-            !line.text.includes('lowerbound') &&
-            !line.text.includes('upperbound')
-          ) {
-            lastValidScoreLine = line.text
-            break
+
+        if (isMatchMode) {
+          // Find the last info move line first
+          let lastMoveIndex = -1
+          for (let i = engineOutput.length - 1; i >= 0; i--) {
+            const line = engineOutput[i]
+            if (line.kind === 'recv' && line.text.startsWith('info move ')) {
+              lastMoveIndex = i
+              break
+            }
+          }
+
+          console.log(
+            '[DEBUG] RECORD_AND_FINALIZE: Found last move index:',
+            lastMoveIndex
+          )
+
+          // If we found an info move line, look for the preceding info depth line
+          if (lastMoveIndex >= 0) {
+            for (let i = lastMoveIndex - 1; i >= 0; i--) {
+              const line = engineOutput[i]
+              if (
+                line.kind === 'recv' &&
+                line.text.includes('score') &&
+                line.text.startsWith('info depth') &&
+                !line.text.includes('lowerbound') &&
+                !line.text.includes('upperbound')
+              ) {
+                lastValidScoreLine = line.text
+                console.log(
+                  '[DEBUG] RECORD_AND_FINALIZE: Found score line at index:',
+                  i,
+                  'Line:',
+                  line.text
+                )
+                break
+              }
+            }
+          }
+        } else {
+          // Normal UCI mode: find the last valid score line
+          for (let i = engineOutput.length - 1; i >= 0; i--) {
+            const line = engineOutput[i]
+            if (
+              line.kind === 'recv' &&
+              line.text.includes('score') &&
+              !line.text.includes('lowerbound') &&
+              !line.text.includes('upperbound')
+            ) {
+              lastValidScoreLine = line.text
+              break
+            }
           }
         }
 
@@ -594,18 +649,22 @@ export function useChessGame() {
             engineScore = -engineScore
           }
 
-          console.log('[DEBUG] RECORD_AND_FINALIZE: Extracted score:', {
-            scoreType,
-            scoreValue,
-            engineScore,
-          })
+          console.log(
+            '[DEBUG] RECORD_AND_FINALIZE: Extracted score from UCI engine:',
+            {
+              scoreType,
+              scoreValue,
+              engineScore,
+            }
+          )
         } else {
           console.log(
             '[DEBUG] RECORD_AND_FINALIZE: No valid score match found in engine output'
           )
         }
 
-        // Get analysis time from lastAnalysisTime if available, otherwise calculate from current time
+        // Get analysis time - prioritize JAI engine time if available
+        const jaiEngineTime = (window as any).__JAI_ENGINE_TIME__
         if (engineState.lastAnalysisTime?.value) {
           engineTime = engineState.lastAnalysisTime.value
           console.log(
@@ -618,13 +677,21 @@ export function useChessGame() {
             '[DEBUG] RECORD_AND_FINALIZE: Calculated time from current analysis:',
             engineTime
           )
+        } else if (jaiEngineTime !== undefined) {
+          engineTime = jaiEngineTime
+          console.log(
+            '[DEBUG] RECORD_AND_FINALIZE: Using JAI engine time:',
+            engineTime
+          )
+          // Clear the stored time after using it
+          ;(window as any).__JAI_ENGINE_TIME__ = undefined
         } else {
           engineTime = 0
           console.log('[DEBUG] RECORD_AND_FINALIZE: No analysis time available')
         }
       } else {
         console.log(
-          '[DEBUG] RECORD_AND_FINALIZE: Engine is not thinking and not an AI move, skipping engine data'
+          '[DEBUG] RECORD_AND_FINALIZE: No JAI engine score available and engine is not thinking, skipping engine data'
         )
       }
     }
@@ -638,8 +705,19 @@ export function useChessGame() {
     console.log('[DEBUG] RECORD_AND_FINALIZE: New history entry:', newEntry)
 
     newHistory.push(newEntry)
-    history.value = newHistory
-    currentMoveIndex.value = history.value.length
+
+    // Limit history size to prevent memory issues in long games
+    if (newHistory.length > 2000) {
+      console.log(
+        '[DEBUG] RECORD_AND_FINALIZE: History too long, truncating to last 1000 moves'
+      )
+      const truncatedHistory = newHistory.slice(-1000)
+      history.value = truncatedHistory
+      currentMoveIndex.value = truncatedHistory.length
+    } else {
+      history.value = newHistory
+      currentMoveIndex.value = history.value.length
+    }
 
     console.log(
       '[DEBUG] RECORD_AND_FINALIZE: Updated history length:',
@@ -1263,6 +1341,9 @@ export function useChessGame() {
     // Enable animation effect when making a move
     isAnimating.value = true
 
+    // In match mode, skip all flip logic since JAI engine provides exact moves
+    const isMatchMode = (window as any).__MATCH_MODE__ || false
+
     const targetPiece = pieces.value.find(
       p => p.row === targetRow && p.col === targetCol
     )
@@ -1277,8 +1358,8 @@ export function useChessGame() {
 
     if (targetPiece) {
       // In free flip mode, capturing opponent's hidden piece should not affect their unrevealed pool
-      // Only in random flip mode, we randomly remove a piece from opponent's pool
-      if (!targetPiece.isKnown && flipMode.value === 'random') {
+      // Only in random flip mode and not in match mode, we randomly remove a piece from opponent's pool
+      if (!targetPiece.isKnown && flipMode.value === 'random' && !isMatchMode) {
         const targetSide = getPieceSide(targetPiece)
         const opponentPoolChars = Object.keys(
           unrevealedPieceCounts.value
@@ -1320,7 +1401,7 @@ export function useChessGame() {
       updateAllPieceZIndexes()
     }
 
-    if (wasDarkPiece && !skipFlipLogic) {
+    if (wasDarkPiece && !skipFlipLogic && !isMatchMode) {
       console.log(`[DEBUG] movePiece: Dark piece move detected.`)
       if (flipMode.value === 'free') {
         console.log(
@@ -1473,9 +1554,11 @@ export function useChessGame() {
     // Check if this move has explicit flip information
     const hasExplicitFlip = trimmedUci.length > 4
 
-    // For engine moves, we should NOT skip flip logic since engine UCI moves are always 4 characters
+    // In match mode, always skip flip logic since JAI engine provides exact moves
+    // For UCI engine moves, we should NOT skip flip logic since engine UCI moves are always 4 characters
     // Only skip flip logic if there's explicit flip information (which engine never provides)
-    const skipFlipLogic = hasExplicitFlip
+    const isMatchMode = (window as any).__MATCH_MODE__ || false
+    const skipFlipLogic = hasExplicitFlip || isMatchMode
     movePiece(piece, toRow, toCol, skipFlipLogic)
 
     // Handle flip information if present (characters after the 4th position)
@@ -2053,15 +2136,20 @@ export function useChessGame() {
     fen: string
   ): { [key: string]: number } => {
     const parts = fen.split(' ')
-    
+
     // Detect FEN format by checking if second part is color ('w' or 'b')
-    const isNewFormat = parts.length >= 2 && (parts[1] === 'w' || parts[1] === 'b')
-    
+    const isNewFormat =
+      parts.length >= 2 && (parts[1] === 'w' || parts[1] === 'b')
+
     // In new format: board color hiddenPart halfmove fullmove
     // In old format: board hiddenPart color castling enpassant halfmove fullmove
-    const hiddenPart = isNewFormat 
-      ? (parts.length >= 3 ? parts[2] : '-')
-      : (parts.length >= 2 ? parts[1] : '-')
+    const hiddenPart = isNewFormat
+      ? parts.length >= 3
+        ? parts[2]
+        : '-'
+      : parts.length >= 2
+        ? parts[1]
+        : '-'
 
     const newCounts: { [key: string]: number } = {}
     'RNBAKCP rnbakcp'

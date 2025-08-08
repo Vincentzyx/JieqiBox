@@ -16,6 +16,8 @@ const getInitialSettings = () => {
       useLinearYAxis: false,
       showOnlyLines: false,
       blackPerspective: false,
+      enableYAxisClamp: false,
+      yAxisClampValue: 500,
     }
   }
 
@@ -26,6 +28,9 @@ const getInitialSettings = () => {
       useLinearYAxis: !!settings.useLinearYAxis, // Default to false
       showOnlyLines: !!settings.showOnlyLines, // Default to false
       blackPerspective: !!settings.blackPerspective, // Default to false
+      enableYAxisClamp: !!settings.enableYAxisClamp, // Default to false
+      yAxisClampValue: settings.yAxisClampValue || 500, // Default to 500
+      colorScheme: settings.colorScheme || 'default', // Default to 'default'
     }
   } catch (e) {
     console.error('Failed to get evaluation chart settings:', e)
@@ -35,6 +40,9 @@ const getInitialSettings = () => {
       useLinearYAxis: false,
       showOnlyLines: false,
       blackPerspective: false,
+      enableYAxisClamp: false,
+      yAxisClampValue: 500,
+      colorScheme: 'default',
     }
   }
 }
@@ -45,24 +53,41 @@ const {
   useLinearYAxis: initialUseLinearYAxis,
   showOnlyLines: initialShowOnlyLines,
   blackPerspective: initialBlackPerspective,
+  enableYAxisClamp: initialEnableYAxisClamp,
+  yAxisClampValue: initialYAxisClampValue,
+  colorScheme: initialColorScheme,
 } = getInitialSettings()
 
 const showMoveLabels = ref<boolean>(initialShowMoveLabels)
 const useLinearYAxis = ref<boolean>(initialUseLinearYAxis)
 const showOnlyLines = ref<boolean>(initialShowOnlyLines)
 const blackPerspective = ref<boolean>(initialBlackPerspective)
+const enableYAxisClamp = ref<boolean>(initialEnableYAxisClamp)
+const yAxisClampValue = ref<number>(initialYAxisClampValue)
+const colorScheme = ref<string>(initialColorScheme || 'default')
 
 // Flag to track if config is loaded
 const isConfigLoaded = ref(false)
 
 // Watch for changes and persist to config file
 watch(
-  [showMoveLabels, useLinearYAxis, showOnlyLines, blackPerspective],
+  [
+    showMoveLabels,
+    useLinearYAxis,
+    showOnlyLines,
+    blackPerspective,
+    enableYAxisClamp,
+    yAxisClampValue,
+    colorScheme,
+  ],
   async ([
     newShowMoveLabels,
     newUseLinearYAxis,
     newShowOnlyLines,
     newBlackPerspective,
+    newEnableYAxisClamp,
+    newYAxisClampValue,
+    newColorScheme,
   ]) => {
     // Only save if config is already loaded to avoid overwriting during initialization
     if (!isConfigLoaded.value) return
@@ -72,6 +97,9 @@ watch(
       useLinearYAxis: newUseLinearYAxis,
       showOnlyLines: newShowOnlyLines,
       blackPerspective: newBlackPerspective,
+      enableYAxisClamp: newEnableYAxisClamp,
+      yAxisClampValue: newYAxisClampValue,
+      colorScheme: newColorScheme,
     }
 
     try {
@@ -95,6 +123,9 @@ export function useEvaluationChartSettings() {
       useLinearYAxis.value = !!settings.useLinearYAxis
       showOnlyLines.value = !!settings.showOnlyLines
       blackPerspective.value = !!settings.blackPerspective
+      enableYAxisClamp.value = !!settings.enableYAxisClamp
+      yAxisClampValue.value = settings.yAxisClampValue || 500
+      colorScheme.value = settings.colorScheme || 'default'
 
       isConfigLoaded.value = true
     } catch (error) {
@@ -113,6 +144,9 @@ export function useEvaluationChartSettings() {
     useLinearYAxis,
     showOnlyLines,
     blackPerspective,
+    enableYAxisClamp,
+    yAxisClampValue,
+    colorScheme,
     loadSettings,
   }
 }

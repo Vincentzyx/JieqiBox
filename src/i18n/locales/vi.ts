@@ -228,6 +228,25 @@ export default {
     manageEngines: 'Quản lý',
     unloadEngine: 'Gỡ bỏ engine',
     noEngineLoaded: 'Hiện tại chưa có engine nào được tải.',
+    // Chế độ trận đấu
+    enterMatchMode: 'Chế độ trận đấu',
+    exitMatchMode: 'Thoát chế độ trận đấu',
+    startMatch: 'Bắt đầu trận đấu',
+    stopMatch: 'Dừng trận đấu',
+    jaiSettings: 'Tùy chọn trận đấu',
+    matchInfo: 'Thông tin trận đấu',
+    matchStatus: 'Trạng thái',
+    gameProgress: 'Tiến độ',
+    engineInfo: 'Engine',
+    lastResult: 'Kết quả',
+    matchWld: 'Thắng-Thua-Hòa',
+    eloRating: 'Xếp hạng Elo',
+    eloCalculator: 'Máy tính Elo',
+    matchEngines: 'Engine',
+    running: 'Đang chạy',
+    stopped: 'Đã dừng',
+    noMatchEngine: 'Chưa tải engine trận đấu',
+    noAnalysis: 'Không có dữ liệu phân tích',
     // Nút điều hướng
     goToFirst: 'Đi đến nước đầu tiên',
     goToPrevious: 'Đi đến nước trước',
@@ -288,10 +307,16 @@ export default {
   // Biểu đồ đánh giá
   evaluationChart: {
     title: 'Biểu đồ đánh giá',
+    rightClickHint: 'Nhấp chuột phải để xem tùy chọn',
     showMoveLabels: 'Hiển thị nhãn nước đi',
     linearYAxis: 'Trục Y tuyến tính',
     showOnlyLines: 'Chỉ hiển thị đường',
     blackPerspective: 'Góc nhìn Đen',
+    clampYAxis: 'Giới hạn phạm vi trục Y',
+    clampValue: 'Giá trị giới hạn',
+    colorScheme: 'Bảng màu',
+    redGreen: 'Đỏ-Xanh lá',
+    blueOrange: 'Xanh dương-Cam',
     opening: 'Khai cuộc',
     noData: 'Không có dữ liệu phân tích',
     newGame: 'Ván mới',
@@ -339,6 +364,61 @@ export default {
     bestMove: 'Nước đi tốt nhất: {move}',
     noMoves: 'Không có nước đi nào',
     engineReady: 'Engine đã sẵn sàng',
+  },
+
+  // Hộp thoại tùy chọn JAI
+  jaiOptions: {
+    title: 'Tùy chọn trận đấu JAI',
+    loadingText: 'Đang tải tùy chọn engine...',
+    noEngineLoaded: 'Hiện tại chưa có engine trận đấu nào được tải.',
+    pleaseLoadEngineFirst:
+      'Vui lòng tải engine trận đấu trước để cấu hình các tùy chọn của nó.',
+    loadEngine: 'Tải engine',
+    noOptionsAvailable: 'Không có tùy chọn JAI nào cho engine này.',
+    refreshOptions: 'Làm mới tùy chọn',
+    range: 'Phạm vi',
+    execute: 'Thực hiện',
+    resetToDefaults: 'Đặt lại mặc định',
+    clearSettings: 'Xóa cài đặt',
+    confirmClearSettings:
+      'Bạn có chắc chắn muốn xóa tất cả cấu hình tùy chọn JAI cho engine hiện tại không? Hành động này không thể hoàn tác.',
+    settingsCleared: 'Đã xóa cấu hình tùy chọn JAI',
+    // Mô tả tùy chọn JAI
+    optionDescriptions: {
+      Engine1Path: 'Đường dẫn engine đầu tiên cho trận đấu.',
+      Engine2Path: 'Đường dẫn engine thứ hai cho trận đấu.',
+      TotalRounds: 'Tổng số ván trong trận đấu.',
+      TimeControl: 'Cài đặt kiểm soát thời gian cho mỗi engine.',
+      BookFile: 'Tệp thư viện khai cuộc sử dụng trong trận đấu.',
+      AdjudicationRule: 'Quy tắc phân xử hòa hoặc vị thế quyết định.',
+    },
+  },
+
+  // Tin nhắn JAI
+  jai: {
+    engineReady: 'Engine trận đấu đã sẵn sàng',
+    matchStarted: 'Trận đấu đã bắt đầu',
+    matchStopped: 'Trận đấu đã dừng',
+    gameProgress: 'Ván {current} / {total}',
+    matchResult: 'Kết quả trận đấu: {result}',
+  },
+
+  // Máy tính Elo
+  eloCalculator: {
+    title: 'Máy tính Xếp hạng Hiệu suất Elo',
+    inputSection: 'Nhập Thống kê WLD',
+    wins: 'Thắng',
+    losses: 'Thua',
+    draws: 'Hòa',
+    totalGames: 'Tổng số ván',
+    resultsSection: 'Kết quả Tính toán',
+    performance: 'Xếp hạng Hiệu suất',
+    errorMargin: 'Biên độ Lỗi',
+    confidenceInterval: 'Khoảng tin cậy 95%',
+    scoreRate: 'Tỷ lệ Điểm',
+    standardError: 'Lỗi Chuẩn',
+    noResults: 'Không có kết quả',
+    close: 'Đóng',
   },
 
   // Xác nhận thao tác trò chơi

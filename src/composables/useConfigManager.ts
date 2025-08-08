@@ -28,6 +28,9 @@ interface ConfigData {
     useLinearYAxis: boolean
     showOnlyLines: boolean
     blackPerspective: boolean
+    enableYAxisClamp: boolean
+    yAxisClampValue: number
+    colorScheme: string
   }
   analysisSettings: {
     movetime: number
@@ -40,7 +43,11 @@ interface ConfigData {
     flipMode: 'random' | 'free'
     enablePonder: boolean
   }
+  matchSettings: {
+    isMatchMode: boolean
+  }
   uciOptions: Record<string, Record<string, string | number | boolean>>
+  jaiOptions: Record<string, Record<string, string | number | boolean>>
   locale: string
   // New properties for engine management
   Engines?: {
@@ -49,7 +56,7 @@ interface ConfigData {
   Settings?: {
     lastSelectedEngineId?: string
   }
-  [key: string]: any // Allow additional properties for UCI options
+  [key: string]: any // Allow additional properties for UCI and JAI options
 }
 
 // Default configuration values
@@ -69,6 +76,9 @@ const defaultConfig: ConfigData = {
     useLinearYAxis: false,
     showOnlyLines: false,
     blackPerspective: false,
+    enableYAxisClamp: false,
+    yAxisClampValue: 500,
+    colorScheme: 'default',
   },
   analysisSettings: {
     movetime: 1000,
@@ -81,7 +91,11 @@ const defaultConfig: ConfigData = {
     flipMode: 'random',
     enablePonder: false,
   },
+  matchSettings: {
+    isMatchMode: false,
+  },
   uciOptions: {},
+  jaiOptions: {},
   locale: 'zh_cn',
 }
 
@@ -120,6 +134,7 @@ export function useConfigManager() {
             ...parsedConfig.gameSettings,
           },
           uciOptions: parsedConfig.uciOptions || {},
+          jaiOptions: parsedConfig.jaiOptions || {},
         }
       }
     } catch (error) {
@@ -276,12 +291,52 @@ export function useConfigManager() {
     }
   }
 
+  // --- JAI OPTIONS METHODS ---
+
+  const getJaiOptions = (engineId: string): Record<string, any> => {
+    const key = `JaiOptions_${engineId}`
+    return configData.value[key] || {}
+  }
+
+  const updateJaiOptions = async (
+    engineId: string,
+    options: Record<string, any>
+  ) => {
+    const key = `JaiOptions_${engineId}`
+    configData.value[key] = { ...(configData.value[key] || {}), ...options }
+    await saveConfig()
+  }
+
+  const clearJaiOptions = async (engineId: string) => {
+    const key = `JaiOptions_${engineId}`
+    if (configData.value[key]) {
+      delete configData.value[key]
+      await saveConfig()
+    }
+  }
+
   // Get locale setting
   const getLocale = () => configData.value.locale
 
   // Update locale setting
   const updateLocale = async (locale: string): Promise<void> => {
     configData.value.locale = locale
+    await saveConfig()
+  }
+
+  // --- MATCH SETTINGS METHODS ---
+
+  // Get match settings
+  const getMatchSettings = () => configData.value.matchSettings
+
+  // Update match settings
+  const updateMatchSettings = async (
+    settings: Partial<ConfigData['matchSettings']>
+  ): Promise<void> => {
+    configData.value.matchSettings = {
+      ...configData.value.matchSettings,
+      ...settings,
+    }
     await saveConfig()
   }
 
@@ -317,6 +372,8 @@ export function useConfigManager() {
     updateAnalysisSettings,
     getGameSettings,
     updateGameSettings,
+    getMatchSettings,
+    updateMatchSettings,
     getEngines,
     saveEngines,
     getLastSelectedEngineId,
@@ -325,6 +382,9 @@ export function useConfigManager() {
     getUciOptions,
     updateUciOptions,
     clearUciOptions,
+    getJaiOptions,
+    updateJaiOptions,
+    clearJaiOptions,
     getLocale,
     updateLocale,
     resetToDefaults,

@@ -226,6 +226,25 @@ export default {
     manageEngines: '管理',
     unloadEngine: 'エンジンをアンロード',
     noEngineLoaded: '現在、エンジンは読み込まれていません。',
+    // マッチモード関連
+    enterMatchMode: 'マッチモード',
+    exitMatchMode: 'マッチモードを終了',
+    startMatch: 'マッチ開始',
+    stopMatch: 'マッチ停止',
+    jaiSettings: 'マッチオプション',
+    matchInfo: 'マッチ情報',
+    matchStatus: '状態',
+    gameProgress: '進捗',
+    engineInfo: 'エンジン',
+    lastResult: '結果',
+    matchWld: '勝敗分',
+    eloRating: 'Eloレーティング',
+    eloCalculator: 'Elo計算機',
+    matchEngines: 'エンジン',
+    running: '実行中',
+    stopped: '停止',
+    noMatchEngine: 'マッチエンジンが読み込まれていません',
+    noAnalysis: '解析データがありません',
     // ナビゲーションボタン
     goToFirst: '最初の手に移動',
     goToPrevious: '前の手に移動',
@@ -286,10 +305,16 @@ export default {
   // 評価チャート
   evaluationChart: {
     title: '評価チャート',
+    rightClickHint: '右クリックでオプション',
     showMoveLabels: '手のラベルを表示',
     linearYAxis: '線形Y軸',
     showOnlyLines: '線のみ表示',
     blackPerspective: '黒側視点',
+    clampYAxis: 'Y軸範囲を制限',
+    clampValue: '制限値',
+    colorScheme: 'カラースキーム',
+    redGreen: '赤緑配色',
+    blueOrange: '青橙配色',
     opening: '序盤',
     noData: '分析データがありません',
     newGame: '新しいゲーム',
@@ -337,6 +362,61 @@ export default {
     bestMove: '最善手: {move}',
     noMoves: '利用可能な動きがありません',
     engineReady: 'エンジンは準備ができました',
+  },
+
+  // JAIオプションダイアログ
+  jaiOptions: {
+    title: 'JAIマッチオプション',
+    loadingText: 'エンジンオプションを読み込み中...',
+    noEngineLoaded: '現在、マッチエンジンが読み込まれていません。',
+    pleaseLoadEngineFirst:
+      'マッチエンジンのオプションを設定するには、まずエンジンを読み込んでください。',
+    loadEngine: 'エンジンを読み込む',
+    noOptionsAvailable: 'このエンジンには利用可能なJAIオプションがありません。',
+    refreshOptions: 'オプションを更新',
+    range: '範囲',
+    execute: '実行',
+    resetToDefaults: 'デフォルトに戻す',
+    clearSettings: '設定をクリア',
+    confirmClearSettings:
+      '現在のエンジンのすべてのJAIオプション設定をクリアしますか？この操作は元に戻せません。',
+    settingsCleared: 'JAIオプション設定をクリアしました',
+    // JAIオプション説明
+    optionDescriptions: {
+      Engine1Path: 'マッチ対戦の最初のエンジンパス。',
+      Engine2Path: 'マッチ対戦の二番目のエンジンパス。',
+      TotalRounds: 'マッチで行う総ラウンド数。',
+      TimeControl: '各エンジンの時間制御設定。',
+      BookFile: 'マッチで使用する開局ライブラリファイル。',
+      AdjudicationRule: '和棋や決定的な局面の裁定ルール。',
+    },
+  },
+
+  // JAIメッセージ
+  jai: {
+    engineReady: 'マッチエンジンが準備できました',
+    matchStarted: 'マッチが開始されました',
+    matchStopped: 'マッチが停止されました',
+    gameProgress: '第 {current} 局、全 {total} 局',
+    matchResult: 'マッチ結果: {result}',
+  },
+
+  // Elo計算機
+  eloCalculator: {
+    title: 'Eloパフォーマンスレーティング計算機',
+    inputSection: 'WLD統計入力',
+    wins: '勝',
+    losses: '負',
+    draws: '分',
+    totalGames: '総ゲーム数',
+    resultsSection: '計算結果',
+    performance: 'パフォーマンスレーティング',
+    errorMargin: '誤差範囲',
+    confidenceInterval: '95%信頼区間',
+    scoreRate: 'スコア率',
+    standardError: '標準誤差',
+    noResults: '結果がありません',
+    close: '閉じる',
   },
 
   // ゲーム操作確認

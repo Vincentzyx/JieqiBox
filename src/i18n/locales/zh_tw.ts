@@ -224,6 +224,25 @@ export default {
     manageEngines: '管理',
     unloadEngine: '卸載引擎',
     noEngineLoaded: '目前沒有載入任何引擎。',
+    // 比賽模式相關
+    enterMatchMode: '比賽模式',
+    exitMatchMode: '退出比賽模式',
+    startMatch: '開始比賽',
+    stopMatch: '停止比賽',
+    jaiSettings: '比賽選項',
+    matchInfo: '比賽資訊',
+    matchStatus: '狀態',
+    gameProgress: '進度',
+    engineInfo: '引擎',
+    lastResult: '結果',
+    matchWld: '勝負和',
+    eloRating: 'Elo評級',
+    eloCalculator: 'Elo計算器',
+    matchEngines: '引擎',
+    running: '執行中',
+    stopped: '已停止',
+    noMatchEngine: '未載入比賽引擎',
+    noAnalysis: '無分析資料',
     // 導航按鈕
     goToFirst: '回到第一步',
     goToPrevious: '上一步',
@@ -280,10 +299,16 @@ export default {
   // 局勢圖
   evaluationChart: {
     title: '局勢圖',
+    rightClickHint: '右鍵點擊查看選項',
     showMoveLabels: '顯示著法標籤',
     linearYAxis: '線性Y軸',
     showOnlyLines: '僅顯示線條',
     blackPerspective: '黑方視角',
+    clampYAxis: '限制Y軸範圍',
+    clampValue: '限制值',
+    colorScheme: '配色方案',
+    redGreen: '紅綠配色',
+    blueOrange: '藍橙配色',
     opening: '開局',
     noData: '暫無分析數據',
     newGame: '新對局',
@@ -331,6 +356,60 @@ export default {
     bestMove: '最佳著法: {move}',
     noMoves: '無著可走',
     engineReady: '引擎已就緒',
+  },
+
+  // JAI選項對話框
+  jaiOptions: {
+    title: 'JAI比賽選項',
+    loadingText: '正在載入引擎選項...',
+    noEngineLoaded: '目前未載入任何比賽引擎。',
+    pleaseLoadEngineFirst: '請先載入比賽引擎以配置其選項。',
+    loadEngine: '載入引擎',
+    noOptionsAvailable: '該引擎無可用JAI選項。',
+    refreshOptions: '重新整理選項',
+    range: '範圍',
+    execute: '執行',
+    resetToDefaults: '恢復預設',
+    clearSettings: '清除設定',
+    confirmClearSettings:
+      '確定要清除當前引擎的所有JAI選項配置嗎？此操作不可恢復。',
+    settingsCleared: '已清除JAI選項配置',
+    // JAI選項說明
+    optionDescriptions: {
+      Engine1Path: '比賽對戰的第一個引擎路徑。',
+      Engine2Path: '比賽對戰的第二個引擎路徑。',
+      TotalRounds: '比賽中要進行的總輪數。',
+      TimeControl: '每個引擎的時間控制設定。',
+      BookFile: '比賽使用的開局庫檔案。',
+      AdjudicationRule: '裁決和棋或決定性局面的規則。',
+    },
+  },
+
+  // JAI訊息
+  jai: {
+    engineReady: '比賽引擎已就緒',
+    matchStarted: '比賽已開始',
+    matchStopped: '比賽已停止',
+    gameProgress: '第 {current} 局，共 {total} 局',
+    matchResult: '比賽結果: {result}',
+  },
+
+  // Elo計算器
+  eloCalculator: {
+    title: 'Elo表現評級計算器',
+    inputSection: '輸入勝負和統計',
+    wins: '勝',
+    losses: '負',
+    draws: '和',
+    totalGames: '總局數',
+    resultsSection: '計算結果',
+    performance: '表現評級',
+    errorMargin: '誤差範圍',
+    confidenceInterval: '95%置信區間',
+    scoreRate: '得分率',
+    standardError: '標準誤差',
+    noResults: '無可用結果',
+    close: '關閉',
   },
 
   // 遊戲操作確認

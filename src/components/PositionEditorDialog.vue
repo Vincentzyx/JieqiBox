@@ -379,14 +379,18 @@
         isKnown: piece.isKnown,
         name: piece.isKnown
           ? piece.name
-          : gameState.isBoardFlipped
-            ? piece.row >= 5
-              ? 'red_unknown'
-              : 'black_unknown'
-            : piece.row < 5
-              ? 'red_unknown'
-              : 'black_unknown',
+          : piece.row >= 5
+            ? 'red_unknown'
+            : 'black_unknown',
+        // Ensure initialRole matches the piece's current square
+        initialRole: gameState.getRoleByPosition
+          ? gameState.getRoleByPosition(piece.row, piece.col)
+          : piece.initialRole,
+        initialRow: piece.row,
+        initialCol: piece.col,
       }))
+      // Reclassify by king halves to avoid any flip-induced mislabeling
+      reclassifyAllDarkPieces()
       editingSideToMove.value = gameState.sideToMove.value
       selectedPiece.value = null
     }
@@ -411,6 +415,75 @@
   // Get the piece at a specific position
   const getPieceAt = (row: number, col: number): Piece | null => {
     return editingPieces.value.find(p => p.row === row && p.col === col) || null
+  }
+
+  // Helper: compute dark rows for each side based on king positions
+  const getDarkRowsByKings = () => {
+    const topRegion = [0, 1, 2, 3]
+    const bottomRegion = [6, 7, 8, 9]
+
+    const redKing = editingPieces.value.find(
+      p => p.isKnown && p.name === 'red_king'
+    )
+    const blackKing = editingPieces.value.find(
+      p => p.isKnown && p.name === 'black_king'
+    )
+
+    // Defaults: red bottom, black top
+    let redRows = bottomRegion.slice()
+    let blackRows = topRegion.slice()
+
+    const isInTop = (row: number) => topRegion.includes(row)
+    const isInBottom = (row: number) => bottomRegion.includes(row)
+
+    if (redKing) {
+      if (isInTop(redKing.row)) {
+        redRows = topRegion.slice()
+        blackRows = bottomRegion.slice()
+      } else if (isInBottom(redKing.row)) {
+        redRows = bottomRegion.slice()
+        blackRows = topRegion.slice()
+      } else if (blackKing) {
+        // Red king in middle rows, decide by black king if possible
+        if (isInTop(blackKing.row)) {
+          blackRows = topRegion.slice()
+          redRows = bottomRegion.slice()
+        } else if (isInBottom(blackKing.row)) {
+          blackRows = bottomRegion.slice()
+          redRows = topRegion.slice()
+        }
+      }
+    } else if (blackKing) {
+      // Red king missing, decide by black king
+      if (isInTop(blackKing.row)) {
+        blackRows = topRegion.slice()
+        redRows = bottomRegion.slice()
+      } else if (isInBottom(blackKing.row)) {
+        blackRows = bottomRegion.slice()
+        redRows = topRegion.slice()
+      }
+    }
+
+    return { redRows, blackRows }
+  }
+
+  // Helper: classify unknown color by king-based halves
+  const classifyUnknownByKings = (
+    row: number
+  ): 'red_unknown' | 'black_unknown' => {
+    const { redRows } = getDarkRowsByKings()
+    return redRows.includes(row) ? 'red_unknown' : 'black_unknown'
+  }
+
+  // Helper: reclassify all dark piece names according to current king-based halves
+  const reclassifyAllDarkPieces = () => {
+    const { redRows } = getDarkRowsByKings()
+    editingPieces.value = editingPieces.value.map(p => {
+      if (p.isKnown) return p
+      const newName = redRows.includes(p.row) ? 'red_unknown' : 'black_unknown'
+      if (p.name === newName) return p
+      return { ...p, name: newName }
+    })
   }
 
   // Select an existing piece
@@ -471,13 +544,30 @@
     if (selectedPiece.value.row !== -1) {
       selectedPiece.value.row = row
       selectedPiece.value.col = col
+      // Update initial placement role for dark move logic
+      if (gameState.getRoleByPosition) {
+        selectedPiece.value.initialRole =
+          gameState.getRoleByPosition(row, col) || ''
+      }
+      selectedPiece.value.initialRow = row
+      selectedPiece.value.initialCol = col
+      // Reclassify unknown color label based on king halves if it's a dark piece
+      if (!selectedPiece.value.isKnown) {
+        selectedPiece.value.name = classifyUnknownByKings(row)
+      }
+      // If a king moved, dark piece halves may change; reclassify
+      if (
+        selectedPiece.value.name === 'red_king' ||
+        selectedPiece.value.name === 'black_king'
+      ) {
+        reclassifyAllDarkPieces()
+      }
     } else {
       // It's a new piece from palette
       let finalPieceName = selectedPiece.value.name
       if (selectedPiece.value.name === 'unknown') {
-        // Determine red/black based on position
-        const isRedSide = gameState.isBoardFlipped ? row >= 5 : row < 5
-        finalPieceName = isRedSide ? 'red_unknown' : 'black_unknown'
+        // Classify unknown by king-based halves (independent of flip)
+        finalPieceName = classifyUnknownByKings(row)
       }
 
       const newPiece: Piece = {
@@ -507,13 +597,26 @@
 
   // Flip the board
   const flipBoard = () => {
-    editingPieces.value = editingPieces.value.map(piece => ({
-      ...piece,
-      row: 9 - piece.row,
-      col: 8 - piece.col,
-      initialRow: 9 - piece.initialRow,
-      initialCol: 8 - piece.initialCol,
-    }))
+    editingPieces.value = editingPieces.value.map(piece => {
+      const flippedRow = 9 - piece.row
+      const flippedCol = 8 - piece.col
+      const flippedInitialRow = 9 - piece.initialRow
+      const flippedInitialCol = 8 - piece.initialCol
+      return {
+        ...piece,
+        row: flippedRow,
+        col: flippedCol,
+        initialRow: flippedInitialRow,
+        initialCol: flippedInitialCol,
+        // Recompute initialRole based on new square to keep dark move logic consistent with position
+        initialRole: gameState.getRoleByPosition
+          ? gameState.getRoleByPosition(flippedRow, flippedCol)
+          : piece.initialRole,
+      }
+    })
+
+    // Reclassify dark pieces after coordinates change
+    reclassifyAllDarkPieces()
 
     if (gameState.toggleBoardFlip) {
       gameState.toggleBoardFlip(false)
@@ -550,6 +653,8 @@
           }))
 
           editingPieces.value = originalPieces
+          // Ensure correct classification by king halves
+          reclassifyAllDarkPieces()
           editingSideToMove.value = 'red'
         }, 0)
       }
@@ -688,21 +793,13 @@
         }
       }
 
-      // Check dark piece positions (they should be in valid starting positions)
+      // Check dark piece positions (validate by king-based halves)
       const darkPieces = editingPieces.value.filter(p => !p.isKnown)
-      const isBoardFlipped = gameState.isBoardFlipped?.value || false
+      const { redRows, blackRows } = getDarkRowsByKings()
 
       for (const piece of darkPieces) {
         const isRedPiece = piece.name.startsWith('red')
-        let validRows: number[]
-
-        if (isRedPiece) {
-          // Red pieces should be on the bottom side (rows 6-9 when not flipped, rows 0-3 when flipped)
-          validRows = isBoardFlipped ? [0, 1, 2, 3] : [6, 7, 8, 9]
-        } else {
-          // Black pieces should be on the top side (rows 0-3 when not flipped, rows 6-9 when flipped)
-          validRows = isBoardFlipped ? [6, 7, 8, 9] : [0, 1, 2, 3]
-        }
+        const validRows = isRedPiece ? redRows : blackRows
 
         if (!validRows.includes(piece.row)) {
           return {
@@ -806,7 +903,16 @@
         !isInBlackPalace(blackKing.row, blackKing.col) &&
         isInRedPalace(blackKing.row, blackKing.col)
 
-      if (redKingInWrongPalace || blackKingInWrongPalace) {
+      // Check if kings are in opposite positions (red on top, black on bottom)
+      const redKingOnTop = redKing.row < 5
+      const blackKingOnBottom = blackKing.row >= 5
+      const kingsInOppositePositions = redKingOnTop && blackKingOnBottom
+
+      if (
+        redKingInWrongPalace ||
+        blackKingInWrongPalace ||
+        kingsInOppositePositions
+      ) {
         needsAutoFlip = true
       }
     }

@@ -224,6 +224,25 @@ export default {
     manageEngines: '管理',
     unloadEngine: '卸载引擎',
     noEngineLoaded: '当前没有加载引擎。',
+    // 比赛模式相关
+    enterMatchMode: '比赛模式',
+    exitMatchMode: '退出比赛模式',
+    startMatch: '开始比赛',
+    stopMatch: '停止比赛',
+    jaiSettings: '比赛选项',
+    matchInfo: '比赛信息',
+    matchStatus: '状态',
+    gameProgress: '进度',
+    engineInfo: '引擎',
+    lastResult: '结果',
+    matchWld: '胜负和',
+    eloRating: 'Elo评级',
+    eloCalculator: 'Elo计算器',
+    matchEngines: '引擎',
+    running: '运行中',
+    stopped: '已停止',
+    noMatchEngine: '未加载比赛引擎',
+    noAnalysis: '无分析数据',
     // 导航按钮
     goToFirst: '回到第一步',
     goToPrevious: '上一步',
@@ -253,6 +272,60 @@ export default {
     engineAddedSuccess: '引擎 {name} 添加成功!',
   },
 
+  // JAI 选项对话框
+  jaiOptions: {
+    title: 'JAI比赛选项',
+    loadingText: '正在加载引擎选项...',
+    noEngineLoaded: '当前未加载任何比赛引擎。',
+    pleaseLoadEngineFirst: '请先加载比赛引擎以配置其选项。',
+    loadEngine: '加载引擎',
+    noOptionsAvailable: '该引擎无可用JAI选项。',
+    refreshOptions: '刷新选项',
+    range: '范围',
+    execute: '执行',
+    resetToDefaults: '重置为默认值',
+    clearSettings: '清除设置',
+    confirmClearSettings:
+      '您确定要清除当前引擎的所有JAI选项配置吗？此操作无法撤销。',
+    settingsCleared: 'JAI选项配置已清除',
+    // JAI 选项描述
+    optionDescriptions: {
+      Engine1Path: '比赛对战的第一个引擎路径。',
+      Engine2Path: '比赛对战的第二个引擎路径。',
+      TotalRounds: '比赛中要进行的总轮数。',
+      TimeControl: '每个引擎的时间控制设置。',
+      BookFile: '比赛使用的开局库文件。',
+      AdjudicationRule: '裁决和棋或决定性局面的规则。',
+    },
+  },
+
+  // JAI 消息
+  jai: {
+    engineReady: '比赛引擎已就绪',
+    matchStarted: '比赛已开始',
+    matchStopped: '比赛已停止',
+    gameProgress: '第 {current} 局，共 {total} 局',
+    matchResult: '比赛结果: {result}',
+  },
+
+  // Elo 计算器
+  eloCalculator: {
+    title: 'Elo表现评级计算器',
+    inputSection: '输入胜负和统计',
+    wins: '胜',
+    losses: '负',
+    draws: '和',
+    totalGames: '总局数',
+    resultsSection: '计算结果',
+    performance: '表现评级',
+    errorMargin: '误差范围',
+    confidenceInterval: '95%置信区间',
+    scoreRate: '得分率',
+    standardError: '标准误差',
+    noResults: '无可用结果',
+    close: '关闭',
+  },
+
   // 错误消息
   errors: {
     saveNotationFailed: '保存棋谱失败',
@@ -263,6 +336,7 @@ export default {
     blackDarkPiecesMismatch: '错误: 黑方{darkCount}暗子 > {poolCount}池',
     pieceCountExceeded: '错误: {pieceName} 总数超限!',
     engineLoadFailed: '加载引擎 {name} 失败: {error}',
+    jaiEngineLoadFailed: '加载JAI比赛引擎 {name} 失败: {error}',
     engineUnloadFailed: '卸载引擎失败',
     failedToOpenFileSelector: '打开文件选择器失败',
     failedToProcessEngine: '处理引擎文件失败',
@@ -280,10 +354,16 @@ export default {
   // 局势图
   evaluationChart: {
     title: '局势图',
+    rightClickHint: '右键点击查看选项',
     showMoveLabels: '显示着法标签',
     linearYAxis: '线性Y轴',
     showOnlyLines: '仅显示线条',
     blackPerspective: '黑方视角',
+    clampYAxis: '限制Y轴范围',
+    clampValue: '限制值',
+    colorScheme: '配色方案',
+    redGreen: '红绿配色',
+    blueOrange: '蓝橙配色',
     opening: '开局',
     noData: '暂无分析数据',
     newGame: '新对局',
