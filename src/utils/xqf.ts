@@ -981,11 +981,16 @@ export function convertXQFToJieqiNotation(
     return s || '-'
   }
 
-  const sideToMove = header.WhoPlay === 1 ? 'b' : 'w'
+  let initialSideToMove = header.WhoPlay === 1 ? 'b' : 'w'
+  // Get sideToMove by the first move for compatibility
+  if (rawMoves.length > 0) {
+    const firstMovePiece = pieceBoard[rawMoves[0].fromIndex]
+    initialSideToMove = firstMovePiece && firstMovePiece.toUpperCase() === firstMovePiece ? 'w' : 'b'
+  }
   const fullmoveStart = Math.max(1, Math.floor((header as any).PlayStepNo ? (header as any).PlayStepNo / 2 : 1))
   let halfmoveClock = 0
   let fullmoveNumber = fullmoveStart
-  let sideToMoveLocal: 'w' | 'b' = sideToMove as 'w' | 'b'
+  let sideToMoveLocal: 'w' | 'b' = initialSideToMove as 'w' | 'b'
 
   const generateCurrentFen = (): string => {
     const boardFen = boardToFenPosition(hiddenBoard)
@@ -1071,8 +1076,7 @@ export function convertXQFToJieqiNotation(
 
   // Initial FEN (before any move) for metadata
   const initialHiddenPart = buildHiddenPart(initialHiddenCounts)
-  const initialSide = header.WhoPlay === 1 ? 'b' : 'w'
-  const initialFen = `${boardToFenPosition(initialHiddenBoard)} ${initialSide} ${initialHiddenPart} 0 ${fullmoveStart}`
+  const initialFen = `${boardToFenPosition(initialHiddenBoard)} ${initialSideToMove} ${initialHiddenPart} 0 ${fullmoveStart}`
 
   // Build metadata
   const event = header.MatchName || '揭棋对局'
